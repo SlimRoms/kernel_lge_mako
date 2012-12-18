@@ -829,7 +829,7 @@ static int unix_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	char *sun_path = sunaddr->sun_path;
 	struct dentry *dentry = NULL;
 	struct path path;
-	int err;
+	int err = 0;
 	unsigned hash = 0;
 	struct unix_address *addr;
 	struct hlist_head *list;
@@ -973,7 +973,7 @@ static int unix_dgram_connect(struct socket *sock, struct sockaddr *addr,
 	struct sockaddr_un *sunaddr = (struct sockaddr_un *)addr;
 	struct sock *other;
 	unsigned hash = 0;
-	int err;
+	int err = 0;
 
 	if (addr->sa_family != AF_UNSPEC) {
 		err = unix_mkname(sunaddr, alen, &hash);
@@ -1071,9 +1071,9 @@ static int unix_stream_connect(struct socket *sock, struct sockaddr *uaddr,
 	struct sock *other = NULL;
 	struct sk_buff *skb = NULL;
 	unsigned hash = 0;
-	int st;
-	int err;
-	long timeo;
+	int st = 0;
+	int err = 0;
+	long timeo = 0;
 
 	err = unix_mkname(sunaddr, addr_len, &hash);
 	if (err < 0)
@@ -1454,12 +1454,12 @@ static int unix_dgram_sendmsg(struct kiocb *kiocb, struct socket *sock,
 	struct sockaddr_un *sunaddr = msg->msg_name;
 	struct sock *other = NULL;
 	int namelen = 0; /* fake GCC */
-	int err;
+	int err = 0;
 	unsigned hash = 0;
 	struct sk_buff *skb;
-	long timeo;
+	long timeo = 0;
 	struct scm_cookie tmp_scm;
-	int max_level;
+	int max_level = 0;
 
 	if (NULL == siocb->scm)
 		siocb->scm = &tmp_scm;
