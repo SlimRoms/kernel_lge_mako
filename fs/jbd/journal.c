@@ -619,7 +619,7 @@ EXPORT_SYMBOL(journal_trans_will_send_data_barrier);
 
 int journal_next_log_block(journal_t *journal, unsigned int *retp)
 {
-	unsigned int blocknr;
+	unsigned int blocknr = 0;
 
 	spin_lock(&journal->j_state_lock);
 	J_ASSERT(journal->j_free > 1);
