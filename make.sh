@@ -5,7 +5,7 @@ export ARCH=arm
 echo 'exporting Arch'
 export SUBARCH=arm
 echo 'exporting SubArch'
-export CROSS_COMPILE=/home/josh/Android/toolchain/4.6/bin/arm-linux-androideabi-
+export CROSS_COMPILE=/home/josh/Android/toolchain/4.7/bin/arm-linux-androideabi-
 echo 'exporting Cross Compile'
 echo 'Cleaning build'
 make clean
