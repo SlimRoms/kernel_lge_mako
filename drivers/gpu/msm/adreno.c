@@ -2228,8 +2228,7 @@ static int kgsl_check_interrupt_timestamp(struct kgsl_device *device,
 			cmds[0] = cp_type3_packet(CP_NOP, 1);
 			cmds[1] = 0;
 
-			if (adreno_dev->drawctxt_active &&
-				device->state != KGSL_STATE_SLUMBER)
+			if (adreno_dev->drawctxt_active)
 				adreno_ringbuffer_issuecmds_intr(device,
 						context, &cmds[0], 2);
 			else

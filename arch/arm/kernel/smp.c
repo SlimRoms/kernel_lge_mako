@@ -19,6 +19,7 @@
 #include <linux/mm.h>
 #include <linux/err.h>
 #include <linux/cpu.h>
+#include <linux/smp.h>
 #include <linux/seq_file.h>
 #include <linux/irq.h>
 #include <linux/percpu.h>
@@ -26,7 +27,6 @@
 #include <linux/completion.h>
 
 #include <linux/atomic.h>
-#include <asm/smp.h>
 #include <asm/cacheflush.h>
 #include <asm/cpu.h>
 #include <asm/cputype.h>
@@ -42,7 +42,6 @@
 #include <asm/ptrace.h>
 #include <asm/localtimer.h>
 #include <asm/smp_plat.h>
-#include <asm/mach/arch.h>
 
 /*
  * as from 2.5, kernels no longer have an init_tasks structure
@@ -63,17 +62,30 @@ enum ipi_msg_type {
 
 static DECLARE_COMPLETION(cpu_running);
 
-static struct smp_operations smp_ops;
-
-void __init smp_set_ops(struct smp_operations *ops)
+int __cpuinit __cpu_up(unsigned int cpu)
 {
-	if (ops)
-		smp_ops = *ops;
-};
-
-int __cpuinit __cpu_up(unsigned int cpu, struct task_struct *idle)
-{
+	struct cpuinfo_arm *ci = &per_cpu(cpu_data, cpu);
+	struct task_struct *idle = ci->idle;
 	int ret;
+
+	/*
+	 * Spawn a new process manually, if not already done.
+	 * Grab a pointer to its task struct so we can mess with it
+	 */
+	if (!idle) {
+		idle = fork_idle(cpu);
+		if (IS_ERR(idle)) {
+			printk(KERN_ERR "CPU%u: fork() failed\n", cpu);
+			return PTR_ERR(idle);
+		}
+		ci->idle = idle;
+	} else {
+		/*
+		 * Since this idle thread is being re-used, call
+		 * init_idle() to reinitialize the thread structure.
+		 */
+		init_idle(idle, cpu);
+	}
 
 	/*
 	 * We need to tell the secondary core where to find
@@ -111,60 +123,8 @@ int __cpuinit __cpu_up(unsigned int cpu, struct task_struct *idle)
 	return ret;
 }
 
-/* platform specific SMP operations */
-void __attribute__((weak)) __init smp_init_cpus(void)
-{
-	if (smp_ops.smp_init_cpus)
-		smp_ops.smp_init_cpus();
-}
-
-void __attribute__((weak)) __init platform_smp_prepare_cpus(unsigned int max_cpus)
-{
-	if (smp_ops.smp_prepare_cpus)
-		smp_ops.smp_prepare_cpus(max_cpus);
-}
-
-void __attribute__((weak)) __cpuinit platform_secondary_init(unsigned int cpu)
-{
-	if (smp_ops.smp_secondary_init)
-		smp_ops.smp_secondary_init(cpu);
-}
-
-int __attribute__((weak)) __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
-{
-	if (smp_ops.smp_boot_secondary)
-		return smp_ops.smp_boot_secondary(cpu, idle);
-	return -ENOSYS;
-}
-
 #ifdef CONFIG_HOTPLUG_CPU
 static void percpu_timer_stop(void);
-
-int __attribute__((weak)) platform_cpu_kill(unsigned int cpu)
-{
-	if (smp_ops.cpu_kill)
-		return smp_ops.cpu_kill(cpu);
-	return 1;
-}
-
-void __attribute__((weak)) platform_cpu_die(unsigned int cpu)
-{
-	if (smp_ops.cpu_die)
-		smp_ops.cpu_die(cpu);
-}
-
-int __attribute__((weak)) platform_cpu_disable(unsigned int cpu)
-{
-	if (smp_ops.cpu_disable)
-		return smp_ops.cpu_disable(cpu);
-
-	/*
-	* By default, allow disabling all CPUs except the first one,
-	* since this is special on a lot of platforms, e.g. because
-	* of clock tick interrupts.
-	*/
-	return cpu == 0 ? -EPERM : 0;
-}
 
 /*
  * __cpu_disable runs on the processor to be shutdown.
@@ -364,6 +324,9 @@ void __init smp_cpus_done(unsigned int max_cpus)
 
 void __init smp_prepare_boot_cpu(void)
 {
+	unsigned int cpu = smp_processor_id();
+
+	per_cpu(cpu_data, cpu).idle = current;
 }
 
 void __init smp_prepare_cpus(unsigned int max_cpus)
@@ -550,7 +513,7 @@ static void ipi_cpu_stop(unsigned int cpu)
 		raw_spin_unlock(&stop_lock);
 	}
 
-	set_cpu_active(cpu, false);
+	set_cpu_online(cpu, false);
 
 	local_fiq_disable();
 	local_irq_disable();
@@ -700,10 +663,10 @@ void smp_send_stop(void)
 
 	/* Wait up to one second for other CPUs to stop */
 	timeout = USEC_PER_SEC;
-	while (num_active_cpus() > 1 && timeout--)
+	while (num_online_cpus() > 1 && timeout--)
 		udelay(1);
 
-	if (num_active_cpus() > 1)
+	if (num_online_cpus() > 1)
 		pr_warning("SMP: failed to stop secondary CPUs\n");
 
 	smp_kill_cpus(&mask);
