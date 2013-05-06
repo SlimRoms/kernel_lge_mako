@@ -7,7 +7,7 @@ export ARCH=arm
 echo 'exporting Arch'
 export SUBARCH=arm
 echo 'exporting SubArch'
-export CROSS_COMPILE=/home/prbassplayer/Slim/prebuilt/linux-x86/toolchain/linaro/bin/arm-linux-gnueabihf-
+export CROSS_COMPILE=/home/prbassplayer/Release/prebuilt/linux-x86/toolchain/linaro/bin/arm-linux-gnueabihf-
 echo 'exporting Cross Compile'
 
 # Make sure build is clean!
