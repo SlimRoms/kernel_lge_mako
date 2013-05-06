@@ -5588,11 +5588,6 @@ step5:
 	    tcp_ack(sk, skb, FLAG_SLOWPATH | FLAG_UPDATE_TS_RECENT) < 0)
 		goto discard;
 
-	/* ts_recent update must be made after we are sure that the packet
-	 * is in window.
-	 */
-	tcp_replace_ts_recent(tp, TCP_SKB_CB(skb)->seq);
-
 	tcp_rcv_rtt_measure_ts(sk, skb);
 
 	/* Process urgent data. */
@@ -6063,11 +6058,6 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb,
 		}
 	} else
 		goto discard;
-
-	/* ts_recent update must be made after we are sure that the packet
-	 * is in window.
-	 */
-	tcp_replace_ts_recent(tp, TCP_SKB_CB(skb)->seq);
 
 	/* step 6: check the URG bit */
 	tcp_urg(sk, skb, th);
