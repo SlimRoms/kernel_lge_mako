@@ -1005,8 +1005,6 @@ static void test_exit_queue(struct elevator_queue *e)
 	kfree(td);
 }
 
-<<<<<<< HEAD
-=======
 /**
  * test_get_test_data() - Returns a pointer to the test_data
  * struct which keeps the current test data.
@@ -1078,7 +1076,6 @@ exit:
 	return ret;
 }
 
->>>>>>> 2c41518... block: urgent request: remove unnecessary urgent marking
 static struct elevator_type elevator_test_iosched = {
 	.ops = {
 		.elevator_merge_req_fn = test_merged_requests,
