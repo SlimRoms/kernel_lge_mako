@@ -2,7 +2,7 @@
  * Simple IO scheduler
  * Based on Noop, Deadline and V(R) IO schedulers.
  *
- * Copyright (C) 2012 Miguel Boton <mboton@gmail.com>
+ * Copyright (C) 2012 Miguel Boton <mboton@lowlevel-studios.com>
  *
  *
  * This algorithm does not do any kind of sorting, as it is aimed for
@@ -23,15 +23,25 @@
 enum { ASYNC, SYNC };
 
 /* Tunables */
-static const int sync_read_expire  = HZ / 2;	/* max time before a sync read is submitted. */
-static const int sync_write_expire = 2 * HZ;	/* max time before a sync write is submitted. */
 
-static const int async_read_expire  =  4 * HZ;	/* ditto for async, these limits are SOFT! */
-static const int async_write_expire = 16 * HZ;	/* ditto for async, these limits are SOFT! */
+/* max time before a sync read is submitted. */
+static const int sync_read_expire  = HZ / 2;
+/* max time before a sync write is submitted. */
+static const int sync_write_expire = 2 * HZ;
 
-static const int writes_starved = 2;		/* max times reads can starve a write */
-static const int fifo_batch     = 8;		/* # of sequential requests treated as one
-						   by the above parameters. For throughput. */
+/* ditto for async, these limits are SOFT! */
+static const int async_read_expire  =  4 * HZ;
+/* ditto for async, these limits are SOFT! */
+static const int async_write_expire = 16 * HZ;
+
+
+/* max times reads can starve a write */
+static const int writes_starved = 2;
+/*
+ * # of sequential requests treated as one
+ * by the above parameters. For throughput.
+ */
+static const int fifo_batch     = 8;
 
 /* Elevator data */
 struct sio_data {
@@ -81,18 +91,6 @@ sio_add_request(struct request_queue *q, struct request *rq)
 	rq_set_fifo_time(rq, jiffies + sd->fifo_expire[sync][data_dir]);
 	list_add_tail(&rq->queuelist, &sd->fifo_list[sync][data_dir]);
 }
-
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,38)
-static int
-sio_queue_empty(struct request_queue *q)
-{
-	struct sio_data *sd = q->elevator->elevator_data;
-
-	/* Check if fifo lists are empty */
-	return list_empty(&sd->fifo_list[SYNC][READ]) && list_empty(&sd->fifo_list[SYNC][WRITE]) &&
-	       list_empty(&sd->fifo_list[ASYNC][READ]) && list_empty(&sd->fifo_list[ASYNC][WRITE]);
-}
-#endif
 
 static struct request *
 sio_expired_request(struct sio_data *sd, int sync, int data_dir)
@@ -320,7 +318,8 @@ SHOW_FUNCTION(sio_writes_starved_show, sd->writes_starved, 0);
 #undef SHOW_FUNCTION
 
 #define STORE_FUNCTION(__FUNC, __PTR, MIN, MAX, __CONV)			\
-static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count)	\
+static ssize_t __FUNC(struct elevator_queue *e, const char *page,	\
+							size_t count)	\
 {									\
 	struct sio_data *sd = e->elevator_data;			\
 	int __data;							\
@@ -335,10 +334,14 @@ static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count)	
 		*(__PTR) = __data;					\
 	return ret;							\
 }
-STORE_FUNCTION(sio_sync_read_expire_store, &sd->fifo_expire[SYNC][READ], 0, INT_MAX, 1);
-STORE_FUNCTION(sio_sync_write_expire_store, &sd->fifo_expire[SYNC][WRITE], 0, INT_MAX, 1);
-STORE_FUNCTION(sio_async_read_expire_store, &sd->fifo_expire[ASYNC][READ], 0, INT_MAX, 1);
-STORE_FUNCTION(sio_async_write_expire_store, &sd->fifo_expire[ASYNC][WRITE], 0, INT_MAX, 1);
+STORE_FUNCTION(sio_sync_read_expire_store, &sd->fifo_expire[SYNC][READ], 0,
+								INT_MAX, 1);
+STORE_FUNCTION(sio_sync_write_expire_store, &sd->fifo_expire[SYNC][WRITE], 0,
+								INT_MAX, 1);
+STORE_FUNCTION(sio_async_read_expire_store, &sd->fifo_expire[ASYNC][READ], 0,
+								INT_MAX, 1);
+STORE_FUNCTION(sio_async_write_expire_store, &sd->fifo_expire[ASYNC][WRITE], 0,
+								INT_MAX, 1);
 STORE_FUNCTION(sio_fifo_batch_store, &sd->fifo_batch, 0, INT_MAX, 0);
 STORE_FUNCTION(sio_writes_starved_store, &sd->writes_starved, 0, INT_MAX, 0);
 #undef STORE_FUNCTION
@@ -362,9 +365,6 @@ static struct elevator_type iosched_sio = {
 		.elevator_merge_req_fn		= sio_merged_requests,
 		.elevator_dispatch_fn		= sio_dispatch_requests,
 		.elevator_add_req_fn		= sio_add_request,
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,38)
-		.elevator_queue_empty_fn	= sio_queue_empty,
-#endif
 		.elevator_former_req_fn		= sio_former_request,
 		.elevator_latter_req_fn		= sio_latter_request,
 		.elevator_init_fn		= sio_init_queue,
