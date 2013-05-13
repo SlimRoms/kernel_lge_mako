@@ -79,9 +79,6 @@
 /* NZR SEM 16+ USB (http://www.nzr.de) */
 #define FTDI_NZR_SEM_USB_PID	0xC1E0	/* NZR SEM-LOG16+ */
 
-/* NZR SEM 16+ USB (http://www.nzr.de) */
-#define FTDI_NZR_SEM_USB_PID	0xC1E0	/* NZR SEM-LOG16+ */
-
 /*
  * RR-CirKits LocoBuffer USB (http://www.rr-cirkits.com)
  */

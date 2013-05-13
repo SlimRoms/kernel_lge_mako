@@ -1053,6 +1053,12 @@ static int substream_open(struct snd_rawmidi_substream *substream, int dir,
 		return open ? -ENODEV : 0;
 	}
 
+	down_read(&umidi->disc_rwsem);
+	if (umidi->disconnected) {
+		up_read(&umidi->disc_rwsem);
+		return open ? -ENODEV : 0;
+	}
+
 	mutex_lock(&umidi->mutex);
 	if (open) {
 		if (!umidi->opened[0] && !umidi->opened[1]) {
