@@ -35,18 +35,21 @@ unsigned int temp_threshold = 70;
 module_param(temp_threshold, int, 0755);
 
 static struct msm_thermal_data msm_thermal_info;
+
+static struct workqueue_struct *wq;
 static struct delayed_work check_temp_work;
 
 struct cpufreq_policy *policy = NULL;
 
-uint32_t max_freq;
-uint32_t freq_buffer;
+unsigned int max_freq;
+unsigned int freq_buffer;
 
 static void check_temp(struct work_struct *work)
 {
 	struct tsens_device tsens_dev;
 	long temp = 0;
     unsigned int cpu;
+
 	policy = cpufreq_cpu_get(0);
 	max_freq = policy->max;
 	
@@ -56,34 +59,50 @@ static void check_temp(struct work_struct *work)
 	tsens_dev.sensor_num = msm_thermal_info.sensor_id;
 	tsens_get_temp(&tsens_dev, &temp);
 
-	//device is really hot, it needs severe throttling even if it means a lag fest. Also poll faster        
-	if (temp >= (temp_threshold + 10)) {
+	/* device is really hot, it needs severe throttling even 
+	   if it means a lag fest. Also poll faster */        
+	if (temp >= (temp_threshold + 10)) 
+	{
 		max_freq = 702000;
 		polling = HZ/8;
 	}
-	//temperature is high, lets throttle even more and poll faster (every .25s)
-	else if (temp >= temp_threshold) {
+
+	/* temperature is high, lets throttle even more and 
+	   poll faster (every .25s) */
+	else if (temp >= temp_threshold) 
+	{
 		max_freq = 1026000;
 		polling = HZ/4;
-	} 
-	//the device is getting hot, lets throttle a little bit
-	else if (temp >= (temp_threshold - 5)) {
+	}
+
+	/* the device is getting hot, lets throttle a little bit */
+	else if (temp >= (temp_threshold - 5)) 
+	{
 		max_freq = 1188000;
 	} 
-	//the device is in safe temperature, polling is normal (every second)
-	else if (temp < (temp_threshold - 10)) {
+
+	/* the device is in safe temperature, polling is normal (every second) */
+	else if (temp < (temp_threshold - 10)) 
+	{
 		polling = HZ*2;
 	}
 
-	if (max_freq < freq_buffer || max_freq > freq_buffer) {
+	if (max_freq < freq_buffer || max_freq > freq_buffer) 
+	{
 		freq_buffer = max_freq;
-		for_each_online_cpu(cpu) {
+
+		for_each_possible_cpu(cpu) 
+		{
 			msm_cpufreq_set_freq_limits(cpu, MSM_CPUFREQ_NO_LIMIT, max_freq);
-			pr_info("msm_thermal: max cpu%d frequency changes to %dMHz - polling every %dms", cpu, max_freq/1000, jiffies_to_msecs(polling));
+			pr_info("Thermal Throttle: max cpu%d frequency changes to %dMHz -" 
+				"polling every %dms", 
+				cpu, 
+				max_freq/1000, 
+				jiffies_to_msecs(polling));
 		}
 	}
 
-	schedule_delayed_work(&check_temp_work, polling);
+	queue_delayed_work_on(0, wq, &check_temp_work, polling);
 }
 
 int __devinit msm_thermal_init(struct msm_thermal_data *pdata)
@@ -94,8 +113,13 @@ int __devinit msm_thermal_init(struct msm_thermal_data *pdata)
 	BUG_ON(pdata->sensor_id >= TSENS_MAX_SENSORS);
 	memcpy(&msm_thermal_info, pdata, sizeof(struct msm_thermal_data));
 
+	wq = alloc_workqueue("msm_thermal_workqueue", WQ_HIGHPRI, 0);
+    
+    if (!wq)
+        return -ENOMEM;
+
 	INIT_DELAYED_WORK(&check_temp_work, check_temp);
-	schedule_delayed_work_on(0, &check_temp_work, HZ*30);
+	queue_delayed_work_on(0, wq, &check_temp_work, HZ*30);
 
 	return ret;
 }
