@@ -31,7 +31,7 @@
  */
 unsigned int polling = HZ*2;
 
-unsigned int temp_threshold = 70;
+unsigned int temp_threshold = 60;
 module_param(temp_threshold, int, 0755);
 
 static struct msm_thermal_data msm_thermal_info;
@@ -78,7 +78,7 @@ static void check_temp(struct work_struct *work)
 	/* the device is getting hot, lets throttle a little bit */
 	else if (temp >= (temp_threshold - 5)) 
 	{
-		max_freq = 1188000;
+		max_freq = 1350000;
 	} 
 
 	/* the device is in safe temperature, polling is normal (every second) */
@@ -91,6 +91,8 @@ static void check_temp(struct work_struct *work)
 	{
 		freq_buffer = max_freq;
 
+		/* blocks hotplug operations - critical in this code path */
+		get_online_cpus();
 		for_each_possible_cpu(cpu) 
 		{
 			msm_cpufreq_set_freq_limits(cpu, MSM_CPUFREQ_NO_LIMIT, max_freq);
@@ -100,9 +102,10 @@ static void check_temp(struct work_struct *work)
 				max_freq/1000, 
 				jiffies_to_msecs(polling));
 		}
+		put_online_cpus();
 	}
 
-	queue_delayed_work_on(0, wq, &check_temp_work, polling);
+	queue_delayed_work(wq, &check_temp_work, polling);
 }
 
 int __devinit msm_thermal_init(struct msm_thermal_data *pdata)
@@ -119,7 +122,7 @@ int __devinit msm_thermal_init(struct msm_thermal_data *pdata)
         return -ENOMEM;
 
 	INIT_DELAYED_WORK(&check_temp_work, check_temp);
-	queue_delayed_work_on(0, wq, &check_temp_work, HZ*30);
+	queue_delayed_work(wq, &check_temp_work, HZ*30);
 
 	return ret;
 }
@@ -137,14 +140,6 @@ static int __devinit msm_thermal_dev_probe(struct platform_device *pdev)
 	if (ret)
 		goto fail;
 	WARN_ON(data.sensor_id >= TSENS_MAX_SENSORS);
-
-	key = "qcom,temp-hysteresis";
-	ret = of_property_read_u32(node, key, &data.temp_hysteresis_degC);
-	if (ret)
-		goto fail;
-
-	key = "qcom,freq-step";
-	ret = of_property_read_u32(node, key, &data.freq_step);
 
 fail:
 	if (ret)
