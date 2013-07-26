@@ -51,7 +51,7 @@ static DEFINE_MUTEX(driver_lock);
 static DEFINE_SPINLOCK(l2_lock);
 
 #ifdef CONFIG_DEBUG_FS
-static int pvs_bin;
+static int gpvs_bin;
 #endif
 
 static struct drv_data {
@@ -1080,7 +1080,9 @@ static int __init get_pvs_bin(u32 pte_efuse)
 	} else {
 		dev_info(drv.dev, "ACPU PVS: %d\n", pvs_bin);
 	}
-
+#ifdef CONFIG_DEBUG_FS
+	gpvs_bin = pvs_bin;
+#endif
 	return pvs_bin;
 }
 
@@ -1102,9 +1104,6 @@ static struct pvs_table * __init select_freq_plan(u32 pte_efuse_phys,
 	/* Select frequency tables. */
 	bin_idx = get_speed_bin(pte_efuse_val);
 	tbl_idx = get_pvs_bin(pte_efuse_val);
-#ifdef CONFIG_DEBUG_FS
-	pvs_bin = tbl_idx;
-#endif
 	return &pvs_tables[bin_idx][tbl_idx];
 }
 
