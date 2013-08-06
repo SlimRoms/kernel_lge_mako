@@ -10,6 +10,7 @@ config GAMMA_CONTROL
 	help
 	  This adds full support for Gamma screen tweaking on
 	  Mako.
+	  
 
 config SENSORS_LIS3LV02D
 	tristate
