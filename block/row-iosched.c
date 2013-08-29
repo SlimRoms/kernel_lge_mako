@@ -97,7 +97,7 @@ static const struct row_queue_params row_queues_def[] = {
 
 /* Default values for idling on read queues (in msec) */
 #define ROW_IDLE_TIME_MSEC 5
-#define ROW_READ_FREQ_MSEC 20
+#define ROW_READ_FREQ_MSEC 5
 
 /**
  * struct rowq_idling_data -  parameters for idling on the queue
@@ -200,9 +200,9 @@ struct row_data {
 	struct request			*pending_urgent_rq;
 	int				last_served_ioprio_class;
 
-#define	ROW_REG_STARVATION_TOLLERANCE	50
+#define	ROW_REG_STARVATION_TOLLERANCE	5000
 	struct starvation_data		reg_prio_starvation;
-#define	ROW_LOW_STARVATION_TOLLERANCE	1000
+#define	ROW_LOW_STARVATION_TOLLERANCE	10000
 	struct starvation_data		low_prio_starvation;
 
 	unsigned int			cycle_flags;
@@ -331,6 +331,10 @@ static void row_add_request(struct request_queue *q,
 	struct row_queue *rqueue = RQ_ROWQ(rq);
 	s64 diff_ms;
 	bool queue_was_empty = list_empty(&rqueue->fifo);
+	unsigned long bv_page_flags = 0;
+
+	if (rq->bio && rq->bio->bi_io_vec && rq->bio->bi_io_vec->bv_page)
+		bv_page_flags = rq->bio->bi_io_vec->bv_page->flags;
 
 	list_add_tail(&rq->queuelist, &rqueue->fifo);
 	rd->nr_reqs[rq_data_dir(rq)]++;
@@ -346,11 +350,14 @@ static void row_add_request(struct request_queue *q,
 	if (row_queues_def[rqueue->prio].idling_enabled) {
 		if (rd->rd_idle_data.idling_queue_idx == rqueue->prio &&
 		    hrtimer_active(&rd->rd_idle_data.hr_timer)) {
-			(void)hrtimer_cancel(&rd->rd_idle_data.hr_timer);
-			row_log_rowq(rd, rqueue->prio,
-				"Canceled delayed work on %d",
-				rd->rd_idle_data.idling_queue_idx);
-			rd->rd_idle_data.idling_queue_idx = ROWQ_MAX_PRIO;
+			if (hrtimer_try_to_cancel(
+				&rd->rd_idle_data.hr_timer) >= 0) {
+				row_log_rowq(rd, rqueue->prio,
+				    "Canceled delayed work on %d",
+				    rd->rd_idle_data.idling_queue_idx);
+				rd->rd_idle_data.idling_queue_idx =
+					ROWQ_MAX_PRIO;
+			}
 		}
 		diff_ms = ktime_to_ms(ktime_sub(ktime_get(),
 				rqueue->idle_data.last_insert_time));
@@ -360,7 +367,9 @@ static void row_add_request(struct request_queue *q,
 			rqueue->idle_data.begin_idling = false;
 			return;
 		}
-		if (diff_ms < rd->rd_idle_data.freq_ms) {
+
+		if ((bv_page_flags & (1L << PG_readahead)) ||
+		    (diff_ms < rd->rd_idle_data.freq_ms)) {
 			rqueue->idle_data.begin_idling = true;
 			row_log_rowq(rd, rqueue->prio, "Enable idling");
 		} else {
@@ -387,7 +396,6 @@ static void row_add_request(struct request_queue *q,
 				"added urgent request (total on queue=%d)",
 				rqueue->nr_req);
 			rq->cmd_flags |= REQ_URGENT;
-			WARN_ON(rqueue->nr_req > 1);
 			rd->pending_urgent_rq = rq;
 		}
 	} else
@@ -577,14 +585,14 @@ static int row_get_ioprio_class_to_serve(struct row_data *rd, int force)
 	for (i = 0; i < ROWQ_REG_PRIO_IDX; i++) {
 		if (!list_empty(&rd->row_queues[i].fifo)) {
 			if (hrtimer_active(&rd->rd_idle_data.hr_timer)) {
-				(void)hrtimer_cancel(
-					&rd->rd_idle_data.hr_timer);
-				row_log_rowq(rd,
-					rd->rd_idle_data.idling_queue_idx,
+				if (hrtimer_try_to_cancel(
+					&rd->rd_idle_data.hr_timer) >= 0) {
+					row_log(rd->dispatch_queue,
 					"Canceling delayed work on %d. RT pending",
-					rd->rd_idle_data.idling_queue_idx);
-				rd->rd_idle_data.idling_queue_idx =
-					ROWQ_MAX_PRIO;
+					     rd->rd_idle_data.idling_queue_idx);
+					rd->rd_idle_data.idling_queue_idx =
+						ROWQ_MAX_PRIO;
+				}
 			}
 
 			if (row_regular_req_pending(rd) &&
@@ -720,11 +728,12 @@ static int row_dispatch_requests(struct request_queue *q, int force)
 	int ret = 0, currq, ioprio_class_to_serve, start_idx, end_idx;
 
 	if (force && hrtimer_active(&rd->rd_idle_data.hr_timer)) {
-		(void)hrtimer_cancel(&rd->rd_idle_data.hr_timer);
-		row_log_rowq(rd, rd->rd_idle_data.idling_queue_idx,
-			"Canceled delayed work on %d - forced dispatch",
-			rd->rd_idle_data.idling_queue_idx);
-		rd->rd_idle_data.idling_queue_idx = ROWQ_MAX_PRIO;
+		if (hrtimer_try_to_cancel(&rd->rd_idle_data.hr_timer) >= 0) {
+			row_log(rd->dispatch_queue,
+				"Canceled delayed work on %d - forced dispatch",
+				rd->rd_idle_data.idling_queue_idx);
+			rd->rd_idle_data.idling_queue_idx = ROWQ_MAX_PRIO;
+		}
 	}
 
 	if (rd->pending_urgent_rq) {
@@ -954,46 +963,42 @@ static ssize_t row_var_store(int *var, const char *page, size_t count)
 	return count;
 }
 
-#define SHOW_FUNCTION(__FUNC, __VAR, __CONV)				\
+#define SHOW_FUNCTION(__FUNC, __VAR)				\
 static ssize_t __FUNC(struct elevator_queue *e, char *page)		\
 {									\
 	struct row_data *rowd = e->elevator_data;			\
 	int __data = __VAR;						\
-	if (__CONV)							\
-		__data = jiffies_to_msecs(__data);			\
 	return row_var_show(__data, (page));			\
 }
 SHOW_FUNCTION(row_hp_read_quantum_show,
-	rowd->row_queues[ROWQ_PRIO_HIGH_READ].disp_quantum, 0);
+	rowd->row_queues[ROWQ_PRIO_HIGH_READ].disp_quantum);
 SHOW_FUNCTION(row_rp_read_quantum_show,
-	rowd->row_queues[ROWQ_PRIO_REG_READ].disp_quantum, 0);
+	rowd->row_queues[ROWQ_PRIO_REG_READ].disp_quantum);
 SHOW_FUNCTION(row_hp_swrite_quantum_show,
-	rowd->row_queues[ROWQ_PRIO_HIGH_SWRITE].disp_quantum, 0);
+	rowd->row_queues[ROWQ_PRIO_HIGH_SWRITE].disp_quantum);
 SHOW_FUNCTION(row_rp_swrite_quantum_show,
-	rowd->row_queues[ROWQ_PRIO_REG_SWRITE].disp_quantum, 0);
+	rowd->row_queues[ROWQ_PRIO_REG_SWRITE].disp_quantum);
 SHOW_FUNCTION(row_rp_write_quantum_show,
-	rowd->row_queues[ROWQ_PRIO_REG_WRITE].disp_quantum, 0);
+	rowd->row_queues[ROWQ_PRIO_REG_WRITE].disp_quantum);
 SHOW_FUNCTION(row_lp_read_quantum_show,
-	rowd->row_queues[ROWQ_PRIO_LOW_READ].disp_quantum, 0);
+	rowd->row_queues[ROWQ_PRIO_LOW_READ].disp_quantum);
 SHOW_FUNCTION(row_lp_swrite_quantum_show,
-	rowd->row_queues[ROWQ_PRIO_LOW_SWRITE].disp_quantum, 0);
-SHOW_FUNCTION(row_rd_idle_data_show, rowd->rd_idle_data.idle_time_ms, 0);
-SHOW_FUNCTION(row_rd_idle_data_freq_show, rowd->rd_idle_data.freq_ms, 0);
+	rowd->row_queues[ROWQ_PRIO_LOW_SWRITE].disp_quantum);
+SHOW_FUNCTION(row_rd_idle_data_show, rowd->rd_idle_data.idle_time_ms);
+SHOW_FUNCTION(row_rd_idle_data_freq_show, rowd->rd_idle_data.freq_ms);
 SHOW_FUNCTION(row_reg_starv_limit_show,
-	rowd->reg_prio_starvation.starvation_limit, 0);
+	rowd->reg_prio_starvation.starvation_limit);
 SHOW_FUNCTION(row_low_starv_limit_show,
-	rowd->low_prio_starvation.starvation_limit, 0);
+	rowd->low_prio_starvation.starvation_limit);
 #undef SHOW_FUNCTION
 
-#define STORE_FUNCTION(__FUNC, __PTR, MIN, MAX, __CONV)			\
+#define STORE_FUNCTION(__FUNC, __PTR, MIN, MAX)			\
 static ssize_t __FUNC(struct elevator_queue *e,				\
 		const char *page, size_t count)				\
 {									\
 	struct row_data *rowd = e->elevator_data;			\
 	int __data;						\
 	int ret = row_var_store(&__data, (page), count);		\
-	if (__CONV)							\
-		__data = (int)msecs_to_jiffies(__data);			\
 	if (__data < (MIN))						\
 		__data = (MIN);						\
 	else if (__data > (MAX))					\
@@ -1002,35 +1007,35 @@ static ssize_t __FUNC(struct elevator_queue *e,				\
 	return ret;							\
 }
 STORE_FUNCTION(row_hp_read_quantum_store,
-&rowd->row_queues[ROWQ_PRIO_HIGH_READ].disp_quantum, 1, INT_MAX, 0);
+&rowd->row_queues[ROWQ_PRIO_HIGH_READ].disp_quantum, 1, INT_MAX);
 STORE_FUNCTION(row_rp_read_quantum_store,
 			&rowd->row_queues[ROWQ_PRIO_REG_READ].disp_quantum,
-			1, INT_MAX, 0);
+			1, INT_MAX);
 STORE_FUNCTION(row_hp_swrite_quantum_store,
 			&rowd->row_queues[ROWQ_PRIO_HIGH_SWRITE].disp_quantum,
-			1, INT_MAX, 0);
+			1, INT_MAX);
 STORE_FUNCTION(row_rp_swrite_quantum_store,
 			&rowd->row_queues[ROWQ_PRIO_REG_SWRITE].disp_quantum,
-			1, INT_MAX, 0);
+			1, INT_MAX);
 STORE_FUNCTION(row_rp_write_quantum_store,
 			&rowd->row_queues[ROWQ_PRIO_REG_WRITE].disp_quantum,
-			1, INT_MAX, 0);
+			1, INT_MAX);
 STORE_FUNCTION(row_lp_read_quantum_store,
 			&rowd->row_queues[ROWQ_PRIO_LOW_READ].disp_quantum,
-			1, INT_MAX, 0);
+			1, INT_MAX);
 STORE_FUNCTION(row_lp_swrite_quantum_store,
 			&rowd->row_queues[ROWQ_PRIO_LOW_SWRITE].disp_quantum,
-			1, INT_MAX, 0);
+			1, INT_MAX);
 STORE_FUNCTION(row_rd_idle_data_store, &rowd->rd_idle_data.idle_time_ms,
-			1, INT_MAX, 0);
+			1, INT_MAX);
 STORE_FUNCTION(row_rd_idle_data_freq_store, &rowd->rd_idle_data.freq_ms,
-			1, INT_MAX, 0);
+			1, INT_MAX);
 STORE_FUNCTION(row_reg_starv_limit_store,
 			&rowd->reg_prio_starvation.starvation_limit,
-			1, INT_MAX, 0);
+			1, INT_MAX);
 STORE_FUNCTION(row_low_starv_limit_store,
 			&rowd->low_prio_starvation.starvation_limit,
-			1, INT_MAX, 0);
+			1, INT_MAX);
 
 #undef STORE_FUNCTION
 
