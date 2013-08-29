@@ -1110,6 +1110,7 @@ static int iw_set_mode(struct net_device *dev,
         // Set the phymode correctly for IBSS.
         pConfig  = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
         pWextState->roamProfile.phyMode = hdd_cfg_xlate_to_csr_phy_mode(pConfig->dot11Mode);
+        pAdapter->device_mode = WLAN_HDD_IBSS;
         wdev->iftype = NL80211_IFTYPE_ADHOC;
         break;
     case IW_MODE_INFRA:
@@ -1917,6 +1918,7 @@ static int iw_get_range(struct net_device *dev, struct iw_request_info *info,
       if (active_phy_mode == WNI_CFG_DOT11_MODE_11A || active_phy_mode == WNI_CFG_DOT11_MODE_11G)
       {
          /*Get the supported rates for 11G band*/
+         a_len = WNI_CFG_SUPPORTED_RATES_11A_LEN;
          if (ccmCfgGetStr(hHal,
                           WNI_CFG_SUPPORTED_RATES_11A,
                           supp_rates, &a_len) == eHAL_STATUS_SUCCESS)
@@ -1939,6 +1941,7 @@ static int iw_get_range(struct net_device *dev, struct iw_request_info *info,
       else if (active_phy_mode == WNI_CFG_DOT11_MODE_11B)
       {
          /*Get the supported rates for 11B band*/
+         b_len = WNI_CFG_SUPPORTED_RATES_11B_LEN;
          if (ccmCfgGetStr(hHal,
                           WNI_CFG_SUPPORTED_RATES_11B,
                           supp_rates, &b_len) == eHAL_STATUS_SUCCESS)
@@ -4530,7 +4533,7 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
                 }
                 else
                 {
-                     hddLog(LOGE, "%s : Enter valid MccCredential value between MIN :40 and MAX:160\n");
+                     hddLog(LOGE, "%s : Enter valid MccCredential value between MIN :40 and MAX:160\n", __func__);
                      return 0;
                 }
             }
@@ -4925,7 +4928,7 @@ static int iw_qcom_set_wapi_key(struct net_device *dev, struct iw_request_info *
     hddLog(LOG1, "%s: Received data %s", __func__, (char*)wrqu->data.pointer);
     hddLog(LOG1, "%s: Received data %s", __func__, (char*)extra);
 
-    hddLog(LOG1,":s: INPUT DATA:\nKey Type:0x%02x Key Direction:0x%02x KEY ID:0x%02x\n", __func__,pWapiKey->keyType,pWapiKey->keyDirection,pWapiKey->keyId);
+    hddLog(LOG1,":%s: INPUT DATA:\nKey Type:0x%02x Key Direction:0x%02x KEY ID:0x%02x\n", __func__, pWapiKey->keyType, pWapiKey->keyDirection, pWapiKey->keyId);
     hddLog(LOG1,"Add Index:0x");
     for(i =0 ; i < 12 ; i++)
         hddLog(LOG1,"%02x",pWapiKey->addrIndex[i]);
@@ -5083,12 +5086,12 @@ static int iw_set_fties(struct net_device *dev, struct iw_request_info *info,
     }
     if (!wrqu->data.length)
     {
-        hddLog(LOGE, FL("%s called with 0 length IEs\n"));
+        hddLog(LOGE, FL("called with 0 length IEs\n"));
         return -EINVAL;
     }
     if (wrqu->data.pointer == NULL)
     {
-        hddLog(LOGE, FL("%s called with NULL IE\n"));
+        hddLog(LOGE, FL("called with NULL IE\n"));
         return -EINVAL;
     }
 
@@ -5176,20 +5179,20 @@ static int iw_set_dynamic_mcbc_filter(struct net_device *dev,
                __func__, pRequest->mcastBcastFilterSetting,
                pHddCtx->hdd_wlan_suspended);
 
-        wlanRxpFilterParam = vos_mem_malloc(sizeof(tSirWlanSetRxpFilters));
-        if (NULL == wlanRxpFilterParam)
-        {
-            hddLog(VOS_TRACE_LEVEL_FATAL,
-                   "%s: vos_mem_alloc failed", __func__);
-            return -EINVAL;
-        }
-
         pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting =
             pRequest->mcastBcastFilterSetting;
         pHddCtx->dynamic_mcbc_filter.enableCfg = TRUE;
 
         if (pHddCtx->hdd_wlan_suspended)
         {
+            wlanRxpFilterParam = vos_mem_malloc(sizeof(tSirWlanSetRxpFilters));
+            if (NULL == wlanRxpFilterParam)
+            {
+                hddLog(VOS_TRACE_LEVEL_FATAL,
+                       "%s: vos_mem_alloc failed", __func__);
+                return -EINVAL;
+            }
+
             wlanRxpFilterParam->configuredMcstBcstFilterSetting =
                 pRequest->mcastBcastFilterSetting;
             wlanRxpFilterParam->setMcstBcstFilter = TRUE;
@@ -5446,7 +5449,7 @@ int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest,
                 packetFilterSetReq.paramsData[i].dataLength = pRequest->paramsData[i].dataLength;
                 packetFilterSetReq.paramsData[i].reserved = 0;
 
-                hddLog(VOS_TRACE_LEVEL_INFO, "Proto %d Comp Flag %d Filter Type\n",
+                hddLog(VOS_TRACE_LEVEL_INFO, "Proto %d Comp Flag %d Filter Type %d\n",
                         pRequest->paramsData[i].protocolLayer, pRequest->paramsData[i].cmpFlag,
                         packetFilterSetReq.filterType);
 
@@ -5772,7 +5775,7 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
             "PNO data len %d data %s",
             wrqu->data.length,
-            wrqu->data.pointer);
+            (char *)wrqu->data.pointer);
 
   if (wrqu->data.length <= nOffset )
   {
@@ -6151,7 +6154,7 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
                      &pAdapter->disconnect_comp_var,
                      msecs_to_jiffies(WLAN_WAIT_TIME_DISCONNECT));
 
-             if (lrc <= 0) {
+             if(lrc <= 0) {
 
                 hddLog(VOS_TRACE_LEVEL_ERROR,"%s: %s while while waiting for csrRoamDisconnect ",
                  __func__, (0 == lrc) ? "Timeout" : "Interrupt");
@@ -6165,7 +6168,7 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
         sme_UpdateBgScanConfigIniChannelList(hHal, (eCsrBand) band);
 #endif
-        if (eHAL_STATUS_SUCCESS != sme_SetFreqBand(hHal, (eCsrBand)band))
+        if(eHAL_STATUS_SUCCESS != sme_SetFreqBand(hHal, (eCsrBand)band))
         {
              VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
                      "%s: failed to set the band value to %u ",
@@ -6229,7 +6232,7 @@ VOS_STATUS iw_set_power_params(struct net_device *dev, struct iw_request_info *i
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
             "Power Params data len %d data %s",
             wrqu->data.length,
-            wrqu->data.pointer);
+            (char *)wrqu->data.pointer);
 
   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
   {

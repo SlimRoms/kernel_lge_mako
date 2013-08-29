@@ -6,8 +6,8 @@ WLAN_CHIPSET := prima
 WLAN_SELECT := CONFIG_PRIMA_WLAN=m
 endif
 
-# Build/Package options for 8974, 8226 targets
-ifeq ($(call is-board-platform-in-list,msm8974 msm8226),true)
+# Build/Package options for 8974, 8226, 8610 targets
+ifeq ($(call is-board-platform-in-list,msm8974 msm8226 msm8610),true)
 WLAN_CHIPSET := pronto
 WLAN_SELECT := CONFIG_PRONTO_WLAN=m
 endif
@@ -79,6 +79,10 @@ KBUILD_OPTIONS := WLAN_ROOT=../$(WLAN_BLD_DIR)/prima
 KBUILD_OPTIONS += MODNAME=wlan
 KBUILD_OPTIONS += BOARD_PLATFORM=$(TARGET_BOARD_PLATFORM)
 KBUILD_OPTIONS += $(WLAN_SELECT)
+
+
+VERSION=$(shell grep -w "VERSION =" $(TOP)/kernel/Makefile | sed 's/^VERSION = //' )
+PATCHLEVEL=$(shell grep -w "PATCHLEVEL =" $(TOP)/kernel/Makefile | sed 's/^PATCHLEVEL = //' )
 
 include $(CLEAR_VARS)
 LOCAL_MODULE              := $(WLAN_CHIPSET)_wlan.ko

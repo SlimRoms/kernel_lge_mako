@@ -101,14 +101,15 @@
 #endif
 /** Hdd Default MTU */
 #define HDD_DEFAULT_MTU         (1500)
+
 /**event flags registered net device*/
-#define NET_DEVICE_REGISTERED  (1<<0)
-#define SME_SESSION_OPENED     (1<<1)
-#define INIT_TX_RX_SUCCESS     (1<<2)
-#define WMM_INIT_DONE          (1<<3)
-#define SOFTAP_BSS_STARTED     (1<<4)
-#define DEVICE_IFACE_OPENED    (1<<5)
-#define TDLS_INIT_DONE         (1<<6)
+#define NET_DEVICE_REGISTERED  (0)
+#define SME_SESSION_OPENED     (1)
+#define INIT_TX_RX_SUCCESS     (2)
+#define WMM_INIT_DONE          (3)
+#define SOFTAP_BSS_STARTED     (4)
+#define DEVICE_IFACE_OPENED    (5)
+#define TDLS_INIT_DONE         (6)
 
 /** Maximum time(ms)to wait for disconnect to complete **/
 #define WLAN_WAIT_TIME_DISCONNECT  500
@@ -129,6 +130,8 @@
 /** Maximum time(ms) to wait for tdls mgmt to complete **/
 #define WAIT_TIME_TDLS_MGMT         11000
 
+/** Maximum time(ms) to wait for tdls initiator to start direct communication **/
+#define WAIT_TIME_TDLS_INITIATOR    300
 /* Maximum time to get crda entry settings */
 #define CRDA_WAIT_TIME 300
 
@@ -169,7 +172,7 @@
 #define WLAN_HDD_PUBLIC_ACTION_TDLS_DISC_RESP 14
 #define WLAN_HDD_TDLS_ACTION_FRAME 12
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
-#define HDD_WAKE_LOCK_DURATION msecs_to_jiffies(50)
+#define HDD_WAKE_LOCK_DURATION 50
 #endif
 
 #define HDD_SAP_WAKE_LOCK_DURATION 10000 //10 sec
@@ -408,7 +411,8 @@ typedef enum device_mode
    WLAN_HDD_P2P_GO,
    WLAN_HDD_MONITOR,
    WLAN_HDD_FTM,
-   WLAN_HDD_P2P_DEVICE
+   WLAN_HDD_IBSS,
+   WLAN_HDD_P2P_DEVICE,
 }device_mode_t;
 
 typedef enum rem_on_channel_request_type
@@ -815,7 +819,10 @@ typedef struct hdd_dynamic_mcbcfilter_s
 #define WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter) (&(pAdapter)->sessionCtx.ap.HostapdState)
 #define WLAN_HDD_GET_CFG_STATE_PTR(pAdapter)  (&(pAdapter)->cfg80211State)
 #ifdef FEATURE_WLAN_TDLS
-#define WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter) ((tdlsCtx_t*)(pAdapter)->sessionCtx.station.pHddTdlsCtx)
+#define WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter) \
+        (((WLAN_HDD_INFRA_STATION != pAdapter->device_mode) && \
+        (WLAN_HDD_P2P_CLIENT != pAdapter->device_mode)) ? NULL : \
+        (tdlsCtx_t*)(pAdapter)->sessionCtx.station.pHddTdlsCtx)
 #endif
 
 typedef struct hdd_adapter_list_node
@@ -1035,6 +1042,7 @@ void hdd_abort_mac_scan(hdd_context_t *pHddCtx);
 void wlan_hdd_set_monitor_tx_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
 void hdd_cleanup_actionframe( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
 v_BOOL_t is_crda_regulatory_entry_valid(void);
+void crda_regulatory_entry_default(v_U8_t *countryCode, int domain_id);
 void wlan_hdd_set_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode);
 void wlan_hdd_clear_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode);
 void wlan_hdd_reset_prob_rspies(hdd_adapter_t* pHostapdAdapter);
@@ -1047,8 +1055,6 @@ void hdd_set_ssr_required(e_hdd_ssr_required value);
 VOS_STATUS hdd_enable_bmps_imps(hdd_context_t *pHddCtx);
 VOS_STATUS hdd_disable_bmps_imps(hdd_context_t *pHddCtx, tANI_U8 session_type);
 
-eHalStatus hdd_smeCloseSessionCallback(void *pContext);
-void wlan_hdd_cfg80211_update_reg_info(struct wiphy *wiphy);
 VOS_STATUS wlan_hdd_restart_driver(hdd_context_t *pHddCtx);
 void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx);
 void hdd_set_pwrparams(hdd_context_t *pHddCtx);
