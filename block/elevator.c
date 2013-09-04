@@ -842,6 +842,7 @@ void elv_completed_request(struct request_queue *q, struct request *rq)
 
 	if (test_bit(REQ_ATOM_URGENT, &rq->atomic_flags)) {
 		q->notified_urgent = false;
+		WARN_ON(!q->dispatched_urgent);
 		q->dispatched_urgent = false;
 		blk_clear_rq_urgent(rq);
 	}
