@@ -1030,12 +1030,9 @@ void csr_SetRevision(tpAniSirGlobal pMac, tANI_U8 revision)
 }
 
 /*
- This function flushes the roam scan cache and creates fresh cache
- based on the input channel list
+ This function flushes the roam scan cache
 */
-eHalStatus csrFlushAndCreateBgScanRoamChannelList(tpAniSirGlobal pMac,
-                                                  const tANI_U8 *pChannelList,
-                                                  const tANI_U8 numChannels)
+eHalStatus csrFlushBgScanRoamChannelList(tpAniSirGlobal pMac)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
@@ -1045,7 +1042,24 @@ eHalStatus csrFlushAndCreateBgScanRoamChannelList(tpAniSirGlobal pMac,
     {
         vos_mem_free(pNeighborRoamInfo->cfgParams.channelInfo.ChannelList);
         pNeighborRoamInfo->cfgParams.channelInfo.ChannelList = NULL;
+        pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels = 0;
     }
+    return status;
+}
+
+
+
+/*
+ This function flushes the roam scan cache and creates fresh cache
+ based on the input channel list
+*/
+eHalStatus csrCreateBgScanRoamChannelList(tpAniSirGlobal pMac,
+                                          const tANI_U8 *pChannelList,
+                                          const tANI_U8 numChannels)
+{
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+
     pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels = numChannels;
 
     pNeighborRoamInfo->cfgParams.channelInfo.ChannelList =
@@ -1103,7 +1117,8 @@ eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac,
                 ChannelList[outNumChannels++] = inPtr[i];
             }
         }
-        csrFlushAndCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
+        csrFlushBgScanRoamChannelList(pMac);
+        csrCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
     }
     else if (eCSR_BAND_5G == eBand)
     {
@@ -1117,7 +1132,8 @@ eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac,
                ChannelList[outNumChannels++] = inPtr[i];
             }
         }
-        csrFlushAndCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
+        csrFlushBgScanRoamChannelList(pMac);
+        csrCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
     }
     else if (eCSR_BAND_ALL == eBand)
     {
@@ -1129,7 +1145,8 @@ eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac,
                ChannelList[outNumChannels++] = inPtr[i];
             }
         }
-        csrFlushAndCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
+        csrFlushBgScanRoamChannelList(pMac);
+        csrCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
     }
     else
     {
@@ -1149,7 +1166,7 @@ eHalStatus csrInitCountryValidChannelList(tpAniSirGlobal pMac,
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
-    tANI_U8 *pOutChannelList = pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.ChannelList;
+    tANI_U8 **pOutChannelList = &pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.ChannelList;
     tANI_U8 *pNumChannels = &pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.numOfChannels;
     const tANI_U8 *pChannelList = NULL;
 
@@ -1171,16 +1188,12 @@ eHalStatus csrInitCountryValidChannelList(tpAniSirGlobal pMac,
     else
         return eHAL_STATUS_INVALID_PARAMETER;
 
-    /* Free up the memory first */
-    if (NULL != pOutChannelList)
-    {
-        vos_mem_free(pOutChannelList);
-        pOutChannelList = NULL;
-    }
+    /* Free any existing channel list */
+    vos_mem_free(*pOutChannelList);
 
-    pOutChannelList = vos_mem_malloc(*pNumChannels);
+    *pOutChannelList = vos_mem_malloc(*pNumChannels);
 
-    if (NULL == pOutChannelList)
+    if (NULL == *pOutChannelList)
     {
         smsLog(pMac, LOGE, FL("Memory Allocation for CFG Channel List failed"));
         *pNumChannels = 0;
@@ -1188,7 +1201,7 @@ eHalStatus csrInitCountryValidChannelList(tpAniSirGlobal pMac,
     }
 
     /* Update the roam global structure */
-    palCopyMemory(pMac->hHdd, pOutChannelList, pChannelList, *pNumChannels);
+    palCopyMemory(pMac->hHdd, *pOutChannelList, pChannelList, *pNumChannels);
     return status;
 }
 
@@ -1527,6 +1540,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
                 pMac->roam.configParam.nImmediateRoamRssiDiff );
         pMac->roam.configParam.nRoamPrefer5GHz = pParam->nRoamPrefer5GHz;
         pMac->roam.configParam.nRoamIntraBand = pParam->nRoamIntraBand;
+        pMac->roam.configParam.isWESModeEnabled = pParam->isWESModeEnabled;
 #endif
 #ifdef FEATURE_WLAN_LFR 
         pMac->roam.configParam.isFastRoamIniFeatureEnabled = pParam->isFastRoamIniFeatureEnabled;
@@ -1577,7 +1591,6 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         pMac->roam.configParam.txBFEnable= pParam->enableTxBF;
         pMac->roam.configParam.txBFCsnValue = pParam->txBFCsnValue;
 #endif
-        pMac->scan.fIgnore_chan165 = pParam->fIgnore_chan165;
         pMac->roam.configParam.txLdpcEnable = pParam->enableTxLdpc;
     }
     
@@ -1645,7 +1658,6 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->fValidateList = pMac->roam.configParam.fValidateList;
         pParam->fEnableBypass11d = pMac->scan.fEnableBypass11d;
         pParam->fEnableDFSChnlScan = pMac->scan.fEnableDFSChnlScan;
-        pParam->fIgnore_chan165= pMac->scan.fIgnore_chan165;
         pParam->fScanTwice = pMac->roam.configParam.fScanTwice;
         pParam->fFirstScanOnly2GChnl = pMac->scan.fFirstScanOnly2GChnl;
         pParam->fEnableMCCMode = pMac->roam.configParam.fenableMCCMode;
@@ -1660,7 +1672,7 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->enableTxBF = pMac->roam.configParam.txBFEnable;
         pParam->txBFCsnValue = pMac->roam.configParam.txBFCsnValue;
 #endif
-
+        pParam->enableTxLdpc = pMac->roam.configParam.txLdpcEnable;
         csrSetChannels(pMac, pParam);
 
         status = eHAL_STATUS_SUCCESS;
@@ -8045,11 +8057,12 @@ static eHalStatus csrRoamIssueSetKeyCommand( tpAniSirGlobal pMac, tANI_U32 sessi
     } while (0);
     // Free the command if there has been a failure, or it is a 
     // "local" operation like the set CCX CCKM KRK key.
-    if( (!HAL_STATUS_SUCCESS( status ) && ( NULL != pCommand )) 
+    if ( ( NULL != pCommand ) &&
+         ( (!HAL_STATUS_SUCCESS( status ) )
 #ifdef FEATURE_WLAN_CCX
             || ( eCSR_ENCRYPT_TYPE_KRK == pSetKey->encType ) 
 #endif /* FEATURE_WLAN_CCX */
-            )
+           ) )
     {
         csrReleaseCommandSetKey( pMac, pCommand );
     }
@@ -8500,16 +8513,16 @@ static void csrUpdateRssi(tpAniSirGlobal pMac, void* pMsg)
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
 void csrRoamRssiRspProcessor(tpAniSirGlobal pMac, void* pMsg)
 {
-    v_S7_t  rssi = 0;
     tAniGetRoamRssiRsp* pRoamRssiRsp = (tAniGetRoamRssiRsp*)pMsg;
 
-    /* Get roam Rssi request is backed up and passed back to the response,
-       Extract the request message to fetch callback */
-    tpAniGetRssiReq reqBkp = (tAniGetRssiReq*)pRoamRssiRsp->rssiReq;
-    if(pRoamRssiRsp)
+    if (NULL != pRoamRssiRsp)
     {
-        rssi = pRoamRssiRsp->rssi;
-        if((reqBkp) && (NULL != reqBkp->rssiCallback))
+        /* Get roam Rssi request is backed up and passed back to the response,
+           Extract the request message to fetch callback */
+        tpAniGetRssiReq reqBkp = (tAniGetRssiReq*)pRoamRssiRsp->rssiReq;
+        v_S7_t rssi = pRoamRssiRsp->rssi;
+
+        if ((NULL != reqBkp) && (NULL != reqBkp->rssiCallback))
         {
             ((tCsrRssiCallback)(reqBkp->rssiCallback))(rssi, pRoamRssiRsp->staId, reqBkp->pDevContext);
             reqBkp->rssiCallback = NULL;
@@ -12865,8 +12878,8 @@ eHalStatus csrSendMBStartBssReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, eCs
         {
             wTmp = pal_cpu_to_be16( WNI_CFG_BEACON_INTERVAL_STADEF );
         }
-        if(csrIsconcurrentsessionValid (pMac, sessionId, 
-                                   pParam->bssPersona) 
+        if(csrIsconcurrentsessionValid (pMac, sessionId,
+                                   pParam->bssPersona)
                                    == eHAL_STATUS_SUCCESS )
         {    
            csrValidateMCCBeaconInterval(pMac, pParam->operationChn, &wTmp, sessionId,
@@ -14244,8 +14257,8 @@ eHalStatus csrGetRoamRssi(tpAniSirGlobal pMac,
    status = palSendMBMessage(pMac->hHdd, pMsg );
    if(!HAL_STATUS_SUCCESS(status))
    {
-      smsLog(pMac, LOG1, " csrGetRoamRssi: failed to send down the stats req");
-      palFreeMemory(pMac->hHdd, (void *)pMsg);
+      smsLog(pMac, LOG1, " csrGetRoamRssi: failed to send down the rssi req");
+      //pMsg is freed by palSendMBMessage
       status = eHAL_STATUS_FAILURE;
    }
    return status;
@@ -15513,7 +15526,7 @@ eHalStatus csrSetTxPower(tpAniSirGlobal pMac, v_U8_t sessionId, v_U8_t mW)
        if (!HAL_STATUS_SUCCESS(status))
        {
            smsLog(pMac, LOGE, FL(" csr set TX Power Post MSG Fail %d "), status);
-           palFreeMemory(pMac->hHdd, pMsg);
+           //pMsg is freed by palSendMBMessage
        }
    }
    return status;
