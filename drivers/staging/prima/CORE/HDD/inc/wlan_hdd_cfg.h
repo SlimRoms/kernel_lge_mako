@@ -811,11 +811,6 @@ typedef enum
 #define CFG_IMMEDIATE_ROAM_RSSI_DIFF_MAX                    (125)
 #define CFG_IMMEDIATE_ROAM_RSSI_DIFF_DEFAULT                (3)
 
-/*This parameter is used to set Wireless Extended Security Mode.*/
-#define CFG_ENABLE_WES_MODE_NAME                            "gWESModeEnabled"
-#define CFG_ENABLE_WES_MODE_NAME_MIN                        (0)
-#define CFG_ENABLE_WES_MODE_NAME_MAX                        (1)
-#define CFG_ENABLE_WES_MODE_NAME_DEFAULT                    (0)
 #endif /* (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR) */
 
 #ifdef FEATURE_WLAN_OKC
@@ -1252,6 +1247,11 @@ typedef enum
 #define CFG_ENABLE_DFS_CHNL_SCAN_MAX               ( 1 )
 #define CFG_ENABLE_DFS_CHNL_SCAN_DEFAULT           ( 1 )
 
+#define CFG_ENABLE_IGNORE_CHAN165                   "gIgnore_Chan165"
+#define CFG_ENABLE_IGNORE_CHAN165_MIN               ( 0 )
+#define CFG_ENABLE_IGNORE_CHAN165_MAX               ( 1 )
+#define CFG_ENABLE_IGNORE_CHAN165_DEFAULT           ( 0 )
+
 typedef enum
 {
     eHDD_LINK_SPEED_REPORT_ACTUAL = 0,
@@ -1311,11 +1311,6 @@ typedef enum
 #define CFG_MC_ADDR_LIST_FILTER_MAX                ( 1 )
 #define CFG_MC_ADDR_LIST_FILTER_DEFAULT            ( 0 )
 #endif
-
-#define CFG_ENABLE_SSR                      "gEnableSSR"
-#define CFG_ENABLE_SSR_MIN                  ( 0 )
-#define CFG_ENABLE_SSR_MAX                  ( 1 )
-#define CFG_ENABLE_SSR_DEFAULT              ( 1 )
 
 /*
  * VOS Trace Enable Control
@@ -1475,31 +1470,26 @@ typedef enum
  * Enable / Disable MCC feature
  * Default: Enable
  */
-#define CFG_ENABLE_MCC_ENABLED_NAME             "gEnableMCCMode"
+#define CFG_ENABLE_MCC_ENABLED_NAME             "gEnableMCCMode"      
 #define CFG_ENABLE_MCC_ENABLED_MIN              ( 0 )
 #define CFG_ENABLE_MCC_ENABLED_MAX              ( 1 )
-#define CFG_ENABLE_MCC_ENABLED_DEFAULT          ( 1 )
+#define CFG_ENABLE_MCC_ENABLED_DEFAULT          ( 1 ) 
 
 /*
  * Allow GO in MCC mode to accept different beacon interval than STA's.
  * Added for Wi-Fi Cert. 5.1.12
- * Default: gAllowMCCGODiffBI = 2
- * If gAllowMCCGODiffBI = 1  // Set to 1 for WFA certification. GO Beacon
- *                              interval is not changed. MCC GO
- *                              doesn't work well in optimized way.
- *                              In worst scenario, it may invite STA
- *                              disconnection.
- * gAllowMCCGODiffBI = 2     //If set to 2 workaround 1 disassoc all the clients
+ * Default: Disable
+ * If gAllowMCCGODiffBI = 1  // Set to 1 for WFA certification. GO Beacon interval is not changed. MCC GO 
+*                                             doesn't work well in optimized way. In worst scenario, it may invite STA 
+*                                            disconnection.
+ * gAllowMCCGODiffBI = 2     //If set to 2 workaround 1 disassoc all the clients 
  *                             and update beacon Interval
  * gAllowMCCGODiffBI = 3     //If set to 3 tear down the P2P link in auto/ 
  *                             Non-autonomous -GO case
- * gAllowMCCGODiffBI = 4     //If set to 4 don't disconnect the P2P client
- *                             in autonomous/Non-autonomous -GO case update
- *                             the BI dynamically
  */
 #define CFG_ALLOW_MCC_GO_DIFF_BI_NAME           "gAllowMCCGODiffBI"
 #define CFG_ALLOW_MCC_GO_DIFF_BI_MIN            ( 0 )
-#define CFG_ALLOW_MCC_GO_DIFF_BI_MAX            ( 4 )
+#define CFG_ALLOW_MCC_GO_DIFF_BI_MAX            ( 3 )
 #define CFG_ALLOW_MCC_GO_DIFF_BI_DEFAULT        ( 2 ) 
 
 /*
@@ -1684,25 +1674,8 @@ typedef enum
 #define CFG_DISABLE_LDPC_WITH_TXBF_AP             "gDisableLDPCWithTxbfAP"
 #define CFG_DISABLE_LDPC_WITH_TXBF_AP_MIN         ( 0 )
 #define CFG_DISABLE_LDPC_WITH_TXBF_AP_MAX         ( 1 )
-#define CFG_DISABLE_LDPC_WITH_TXBF_AP_DEFAULT     ( 0 )
+#define CFG_DISABLE_LDPC_WITH_TXBF_AP_DEFAULT     ( 1 )
 #endif
-
-#define CFG_LIST_OF_NON_DFS_COUNTRY_CODE                    "gListOfNonDfsCountryCode"
-#define CFG_LIST_OF_NON_DFS_COUNTRY_CODE_DEFAULT            "JO,MA"
-
-/*
- * IBSS Operating Channels for 2.4G and 5GHz channels
- */
-#define CFG_IBSS_ADHOC_CHANNEL_5GHZ_NAME          "gAdHocChannel5G"
-#define CFG_IBSS_ADHOC_CHANNEL_5GHZ_MIN           ( 36 )
-#define CFG_IBSS_ADHOC_CHANNEL_5GHZ_MAX           ( 165 )
-#define CFG_IBSS_ADHOC_CHANNEL_5GHZ_DEFAULT       ( 44 )
-
-#define CFG_IBSS_ADHOC_CHANNEL_24GHZ_NAME         "gAdHocChannel24G"
-#define CFG_IBSS_ADHOC_CHANNEL_24GHZ_MIN          ( 1 )
-#define CFG_IBSS_ADHOC_CHANNEL_24GHZ_MAX          ( 14 )
-#define CFG_IBSS_ADHOC_CHANNEL_24GHZ_DEFAULT      ( 6 )
-
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -1786,8 +1759,6 @@ typedef struct
    v_BOOL_t      fIsShortPreamble;
    v_BOOL_t      fIsAutoIbssBssid;
    v_MACADDR_t   IbssBssid;
-   v_U32_t       AdHocChannel5G;
-   v_U32_t       AdHocChannel24G;
    
    v_U8_t        intfAddrMask;
    v_MACADDR_t   intfMacAddr[VOS_MAX_CONCURRENCY_PERSONA];
@@ -1902,7 +1873,6 @@ typedef struct
    v_BOOL_t                     isFastTransitionEnabled;
    v_U8_t                       RoamRssiDiff;
    v_U8_t                       nImmediateRoamRssiDiff;
-   v_BOOL_t                     isWESModeEnabled;
 #endif
 #ifdef FEATURE_WLAN_OKC
    v_BOOL_t                     isOkcIniFeatureEnabled;
@@ -2034,6 +2004,7 @@ typedef struct
    v_BOOL_t                    ignoreDynamicDtimInP2pMode;
    v_U16_t                     configMccParam;
    v_U32_t                     numBuffAdvert;
+   v_U8_t                      ignore_chan165;
    v_BOOL_t                    enableRxSTBC;
 #ifdef FEATURE_WLAN_TDLS       
    v_BOOL_t                    fEnableTDLSSupport;
@@ -2064,8 +2035,6 @@ typedef struct
    v_U8_t                      retryLimitZero;
    v_U8_t                      retryLimitOne;
    v_U8_t                      retryLimitTwo;
-   char                        listOfNonDfsCountryCode[128];
-   v_BOOL_t                    enableSSR;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

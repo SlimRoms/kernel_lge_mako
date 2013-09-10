@@ -38,6 +38,9 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+
+/*
+ * */
 /*============================================================================
   FILE:         vos_utils.c
 
@@ -300,7 +303,7 @@ int hmac_sha1(v_U8_t *key, v_U8_t ksize, char *plaintext, v_U8_t psize,
     ahash_request_set_crypt(req, &sg, hash_result, psize);
     ret = wcnss_wlan_crypto_ahash_digest(req);
 
-    VOS_TRACE(VOS_MODULE_ID_VOSS,VOS_TRACE_LEVEL_ERROR, "ret 0x%x", ret);
+    VOS_TRACE(VOS_MODULE_ID_VOSS,VOS_TRACE_LEVEL_ERROR, "ret 0x%x");
 
     switch (ret) {
     case 0:
@@ -403,7 +406,7 @@ int hmac_md5(v_U8_t *key, v_U8_t ksize, char *plaintext, v_U8_t psize,
     struct crypto_ahash *tfm;
     struct scatterlist sg;
     struct ahash_request *req;
-    struct hmac_md5_result tresult = {.err = 0};
+    struct hmac_md5_result tresult;
     void *hash_buff = NULL;
 
     unsigned char hash_result[64];
@@ -455,7 +458,7 @@ int hmac_md5(v_U8_t *key, v_U8_t ksize, char *plaintext, v_U8_t psize,
     ahash_request_set_crypt(req, &sg, hash_result, psize);
     ret = wcnss_wlan_crypto_ahash_digest(req);
 
-    VOS_TRACE(VOS_MODULE_ID_VOSS,VOS_TRACE_LEVEL_ERROR, "ret 0x%x", ret);
+    VOS_TRACE(VOS_MODULE_ID_VOSS,VOS_TRACE_LEVEL_ERROR, "ret 0x%x");
 
     switch (ret) {
         case 0:

@@ -1785,24 +1785,6 @@ eHalStatus pmcRequestBmps (
          status = eHAL_STATUS_FAILURE;
       }
    }
-   /* Retry to enter the BMPS if the
-      status = eHAL_STATUS_PMC_NOT_NOW */
-   else if (status == eHAL_STATUS_PMC_NOT_NOW)
-   {
-      pmcStopTrafficTimer(hHal);
-      smsLog(pMac, LOG1, FL("Can't enter BMPS+++"));
-      if (pmcShouldBmpsTimerRun(pMac))
-      {
-         if (pmcStartTrafficTimer(pMac,
-                                  pMac->pmc.bmpsConfig.trafficMeasurePeriod)
-                                  != eHAL_STATUS_SUCCESS)
-         {
-            smsLog(pMac, LOG1, FL("Cannot start BMPS Retry timer"));
-         }
-         smsLog(pMac, LOG1,
-                FL("BMPS Retry Timer already running or started"));
-      }
-   }
 
    return status;
 }
@@ -2914,7 +2896,7 @@ pmcPrepareProbeReqTemplate(tpAniSirGlobal pMac,
     else if ( DOT11F_WARNED( nStatus ) )
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-            "There were warnings while packing a Probe Request" );
+            "There were warnings while packing a Probe Request (0x%08x)." );
     }
 
     *pusLen = nPayload + sizeof(tSirMacMgmtHdr); 
@@ -3132,7 +3114,7 @@ eHalStatus pmcGetFilterMatchCount
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
 
     VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-        "%s", __func__);
+        "%s: filterId = %d", __func__);
 
     if(NULL == pSession )
     {

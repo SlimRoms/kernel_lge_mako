@@ -101,7 +101,7 @@ typedef tANI_U8 tHalIpv4Addr[4];
     PARAM_llGCOEXIST_CHANGED|PARAM_HT20MHZCOEXIST_CHANGED|PARAM_NON_GF_DEVICES_PRESENT_CHANGED|PARAM_RIFS_MODE_CHANGED|PARAM_LSIG_TXOP_FULL_SUPPORT_CHANGED| PARAM_OBSS_MODE_CHANGED)
 
 /*Dump command response Buffer size*/
-#define DUMPCMD_RSP_BUFFER 500
+#define DUMPCMD_RSP_BUFFER 100
 
 /*Version string max length (including NUL) */
 #define WLAN_HAL_VERSION_LENGTH  64
@@ -4909,7 +4909,7 @@ typedef PACKED_PRE struct PACKED_POST
  *PNO Messages
  *-------------------------------------------------------------------------*/
 /*Max number of channels that a network can be found on*/
-#define WLAN_HAL_PNO_MAX_NETW_CHANNELS  60
+#define WLAN_HAL_PNO_MAX_NETW_CHANNELS  26
 
 /*Max number of channels that a network can be found on*/
 #define WLAN_HAL_PNO_MAX_NETW_CHANNELS_EX  60

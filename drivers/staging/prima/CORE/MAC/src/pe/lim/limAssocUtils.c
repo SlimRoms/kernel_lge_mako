@@ -307,7 +307,7 @@ limCheckRxBasicRates(tpAniSirGlobal pMac, tSirMacRateSet rxRateSet,tpPESession p
     pRateSet->numRates = psessionEntry->rateSet.numRates;
 
     // Extract BSS basic rateset from operational rateset
-    for (i = 0, j = 0; ((i < pRateSet->numRates) && (i < SIR_MAC_RATESET_EID_MAX)) ; i++)
+    for (i = 0, j = 0; i < pRateSet->numRates; i++)
     {
         if ((pRateSet->rate[i] & 0x80) == 0x80)
         {
@@ -2012,14 +2012,10 @@ limPopulateMatchingRateSet(tpAniSirGlobal pMac,
                     if (sirIsArate(tempRateSet2.rate[i] & 0x7f))
                     {
                         isArate=1;
-                        if (aRateIndex < SIR_NUM_11A_RATES)
-                            rates->llaRates[aRateIndex++] = tempRateSet2.rate[i];
+                        rates->llaRates[aRateIndex++] = tempRateSet2.rate[i];
                     }
                     else
-                    {
-                        if (bRateIndex < SIR_NUM_11B_RATES)
-                            rates->llbRates[bRateIndex++] = tempRateSet2.rate[i];
-                    }
+                        rates->llbRates[bRateIndex++] = tempRateSet2.rate[i];
                     break;
                 }
             }

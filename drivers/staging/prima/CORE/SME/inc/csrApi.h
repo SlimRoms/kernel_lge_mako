@@ -265,9 +265,7 @@ typedef struct tagCsrStaParams
     tANI_U8    extn_capability[SIR_MAC_MAX_EXTN_CAP];
     tANI_U8    supported_rates_len;
     tANI_U8    supported_rates[SIR_MAC_MAX_SUPP_RATES];
-    tANI_U8    htcap_present;
     tSirHTCap  HTCap;
-    tANI_U8    vhtcap_present;
     tSirVHTCap VHTCap;
     tANI_U8    uapsd_queues;
     tANI_U8    max_sp;
@@ -1043,10 +1041,9 @@ typedef struct tagCsrConfigParam
 #endif
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-    tANI_U8        isFastTransitionEnabled;
-    tANI_U8        RoamRssiDiff;
-    tANI_U8        nImmediateRoamRssiDiff;
-    tANI_BOOLEAN   isWESModeEnabled;
+    tANI_U8   isFastTransitionEnabled;
+    tANI_U8   RoamRssiDiff;
+    tANI_U8   nImmediateRoamRssiDiff;
 #endif
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
@@ -1087,6 +1084,7 @@ typedef struct tagCsrConfigParam
     */
     tANI_BOOLEAN fFirstScanOnly2GChnl;
 
+    tANI_BOOLEAN fIgnore_chan165;
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
     tANI_BOOLEAN nRoamPrefer5GHz;
     tANI_BOOLEAN nRoamIntraBand;
