@@ -351,10 +351,10 @@ CC		= $(srctree)/scripts/gcc-wrapper.py $(REAL_CC)
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-CFLAGS_MODULE   = -marm -march=armv7-a -mtune=cortex-a15 -mfpu=neon-vfpv4
+CFLAGS_MODULE   = -marm -munaligned-access -march=armv7-a -mtune=cortex-a15 -fno-pic -mfpu=neon-vfpv4
 AFLAGS_MODULE   =
 LDFLAGS_MODULE  =
-CFLAGS_KERNEL	= -marm -march=armv7-a -mtune=cortex-a15 -mfpu=neon-vfpv4
+CFLAGS_KERNEL	= -marm -munaligned-access -march=armv7-a -mtune=cortex-a15 -mfpu=neon-vfpv4
 AFLAGS_KERNEL	=
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
