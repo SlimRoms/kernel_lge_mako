@@ -1737,6 +1737,9 @@ void __init kmem_cache_init_late(void)
 	/* Annotate slab for lockdep -- annotate the malloc caches */
 	init_lock_keys();
 
+	/* Annotate slab for lockdep -- annotate the malloc caches */
+	init_lock_keys();
+
 	/* Done! */
 	slab_state = FULL;
 
