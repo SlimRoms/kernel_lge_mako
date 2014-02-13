@@ -209,7 +209,7 @@ static inline void cpu_hotplug_driver_unlock(void)
 #define unregister_hotcpu_notifier(nb)	({ (void)(nb); })
 #endif		/* CONFIG_HOTPLUG_CPU */
 
-#if defined(CONFIG_PM_SLEEP_SMP) && !defined(CONFIG_MSM_MPDEC)
+#ifdef CONFIG_PM_SLEEP_SMP
 extern int disable_nonboot_cpus(void);
 extern void enable_nonboot_cpus(void);
 #else /* !CONFIG_PM_SLEEP_SMP */
