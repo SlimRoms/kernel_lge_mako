@@ -5,7 +5,6 @@
 #include <linux/types.h>
 #include <linux/threads.h>
 #include <linux/list.h>
-#include <linux/radix-tree.h>
 #include <linux/spinlock.h>
 #include <linux/prio_tree.h>
 #include <linux/rbtree.h>
@@ -53,16 +52,7 @@ struct page {
 	struct {
 		union {
 			pgoff_t index;		/* Our offset within mapping. */
-			void *freelist;		/* slub/slob first free object */
-			bool pfmemalloc;	/* If set by the page allocator,
-						 * ALLOC_NO_WATERMARKS was set
-						 * and the low watermark was not
-						 * met implying that the system
-						 * is under some pressure. The
-						 * caller should try ensure
-						 * this page is only used to
-						 * free other pages.
-						 */
+			void *freelist;		/* slub first free object */
 		};
 
 		union {
@@ -100,12 +90,11 @@ struct page {
 					 */
 					atomic_t _mapcount;
 
-					struct { /* SLUB */
+					struct {
 						unsigned inuse:16;
 						unsigned objects:15;
 						unsigned frozen:1;
 					};
-					int units;	/* SLOB */
 				};
 				atomic_t _count;		/* Usage count, see below. */
 			};
@@ -127,9 +116,6 @@ struct page {
 			short int pobjects;
 #endif
 		};
-
-		struct list_head list;	/* slobs list of pages */
-		struct slab *slab_page; /* slab fields */
 	};
 
 	/* Remainder is not double word aligned */
@@ -144,7 +130,7 @@ struct page {
 #if USE_SPLIT_PTLOCKS
 		spinlock_t ptl;
 #endif
-		struct kmem_cache *slab_cache;	/* SL[AU]B: Pointer to slab */
+		struct kmem_cache *slab;	/* SLUB: Pointer to slab */
 		struct page *first_page;	/* Compound tail pages */
 	};
 
@@ -389,7 +375,7 @@ struct mm_struct {
 	struct core_state *core_state; /* coredumping support */
 #ifdef CONFIG_AIO
 	spinlock_t		ioctx_lock;
-	struct radix_tree_root	ioctx_rtree;
+	struct hlist_head	ioctx_list;
 #endif
 #ifdef CONFIG_MM_OWNER
 	/*
