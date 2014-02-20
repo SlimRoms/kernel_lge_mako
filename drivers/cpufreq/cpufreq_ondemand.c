@@ -1133,7 +1133,7 @@ static int dbs_sync_thread(void *data)
 			cancel_delayed_work_sync(&this_dbs_info->work);
 
 			/*
-			 * Arch specific cpufreq driver may fail.
+			 
 			 * Don't update governor frequency upon failure.
 			 */
 			if (__cpufreq_driver_target(policy, src_freq,
@@ -1147,8 +1147,8 @@ static int dbs_sync_thread(void *data)
 
 			/* reschedule the next ondemand sample */
 			mutex_lock(&this_dbs_info->timer_mutex);
-			schedule_delayed_work_on(cpu, &this_dbs_info->work,
-						 delay);
+			queue_delayed_work_on(cpu, dbs_wq,
+					      &this_dbs_info->work, delay);
 			mutex_unlock(&this_dbs_info->timer_mutex);
 		}
 
