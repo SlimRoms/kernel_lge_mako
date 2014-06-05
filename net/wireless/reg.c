@@ -915,7 +915,7 @@ static void handle_channel(struct wiphy *wiphy,
 
 static void handle_band(struct wiphy *wiphy,
 			enum ieee80211_band band,
-			enum nl80211_reg_initiator initiator)
+				enum nl80211_reg_initiator initiator)
 {
 	unsigned int i;
 	struct ieee80211_supported_band *sband;
@@ -1322,6 +1322,8 @@ static int ignore_request(struct wiphy *wiphy,
 	case NL80211_REGDOM_SET_BY_CORE:
 		return 0;
 	case NL80211_REGDOM_SET_BY_COUNTRY_IE:
+		if (wiphy->country_ie_pref & NL80211_COUNTRY_IE_IGNORE_CORE)
+			return -EALREADY;
 
 		last_wiphy = wiphy_idx_to_wiphy(last_request->wiphy_idx);
 
