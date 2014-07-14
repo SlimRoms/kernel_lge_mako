@@ -949,8 +949,11 @@ config CC_OPTIMIZE_FOR_SIZE
 config CC_OPTIMIZE_DEFAULT
 	bool "Use -O2"
 
-config CC_OPTIMIZE_ALOT
+config CC_OPTIMIZE_MORE
 	bool "Use -O3"
+
+config CC_OPTIMIZE_ALOT
+	bool "Use -Ofast"
 
 endchoice
 
