@@ -32,7 +32,7 @@
 
 static DEFINE_MUTEX(emergency_shutdown_mutex);
 
-static int enabled;
+static int enabled = 0;
 
 //Throttling indicator, 0=not throttled, 1=low, 2=mid, 3=max
 int bricked_thermal_throttled = 0;
