@@ -606,12 +606,11 @@ int __devinit msm_thermal_init(struct msm_thermal_data *pdata)
     BUG_ON(pdata->sensor_id >= TSENS_MAX_SENSORS);
     memcpy(&msm_thermal_info, pdata, sizeof(struct msm_thermal_data));
 
-    enabled = 1;
+    enabled = 0;
     check_temp_workq=alloc_workqueue("msm_thermal", WQ_UNBOUND | WQ_RESCUER, 1);
     if (!check_temp_workq)
         BUG_ON(ENOMEM);
     INIT_DELAYED_WORK(&check_temp_work, check_temp);
-    queue_delayed_work(check_temp_workq, &check_temp_work, 0);
 
     msm_thermal_kobject = kobject_create_and_add("msm_thermal", kernel_kobj);
     if (msm_thermal_kobject) {
